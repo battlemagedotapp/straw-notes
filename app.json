@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Notes",
+    "slug": "notes",
+    "scheme": "notes",
+    "version": "1.0.0",
+    "platforms": ["ios"],
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "xyz.amankushwaha.apps.notes",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "26.0"
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

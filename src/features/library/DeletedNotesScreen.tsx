@@ -1,11 +1,13 @@
+import { notePreview } from '../notes/presentation';
 import { Button, ContentUnavailableView, Host, List } from '@expo/ui/swift-ui';
 import { colors } from '@/ui/tokens';
 import { buttonStyle, listStyle } from '@expo/ui/swift-ui/modifiers';
 import { Stack, useRouter } from 'expo-router';
-import { useDeletedNotes, useNotes } from '../notes/NotesProvider';
+import { useDeletedNotes, useNotes, useRecordings } from '../notes/NotesProvider';
 import { NoteRow } from '../notes/NoteRow';
 export function DeletedNotesScreen() {
   const notes = useDeletedNotes();
+  const recordings = useRecordings();
   const { folders } = useNotes();
   const router = useRouter();
   return (
@@ -30,6 +32,7 @@ export function DeletedNotesScreen() {
               >
                 <NoteRow
                   note={note}
+                  preview={notePreview(note, recordings)}
                   folderName={folders.find((f) => f.id === note.folderId)?.name ?? 'Notes'}
                 />
               </Button>

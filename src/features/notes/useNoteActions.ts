@@ -5,26 +5,13 @@ export function useNoteActions() {
   const dispatch = useAppDispatch();
   return {
     trash(ids: string[], onDone?: () => void) {
-      Alert.alert(
-        ids.length === 1 ? 'Delete note?' : `Delete ${ids.length} notes?`,
-        'You can restore them from Recently Deleted.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              dispatch({ type: 'trash', ids, deletedAt: new Date().toISOString() });
-              onDone?.();
-            },
-          },
-        ],
-      );
+      dispatch({ type: 'trash', ids, deletedAt: new Date().toISOString() });
+      onDone?.();
     },
     remove(ids: string[], onDone?: () => void) {
       Alert.alert(
         'Delete permanently?',
-        'This removes the writing, audio, and transcripts. This cannot be undone.',
+        'This removes the note and its writing. Audio stays in your library. This cannot be undone.',
         [
           { text: 'Cancel', style: 'cancel' },
           {

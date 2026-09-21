@@ -20,9 +20,9 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/ui/tokens';
 import { useState } from 'react';
-import { useAppDispatch, useDeletedNotes, useNotes } from '../notes/NotesProvider';
+import { useAppDispatch, useDeletedNotes, useNotes, useRecordings } from '../notes/NotesProvider';
 import { NoteRow } from '../notes/NoteRow';
-import { dateGroup } from '../notes/presentation';
+import { notePreview, dateGroup } from '../notes/presentation';
 import { useNoteActions } from '../notes/useNoteActions';
 
 export function SelectNotesScreen() {
@@ -32,6 +32,7 @@ export function SelectNotesScreen() {
   const notes = (deleted ? removed : active).filter((n) => !folderId || n.folderId === folderId);
   const [selected, setSelected] = useState<string[]>([]);
   const ids = selected.filter((id) => notes.some((n) => n.id === id));
+  const recordings = useRecordings();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const actions = useNoteActions();
@@ -57,6 +58,7 @@ export function SelectNotesScreen() {
         <Stack.Toolbar.Menu icon="ellipsis" accessibilityLabel="Selection actions">
           {deleted ? (
             <Stack.Toolbar.MenuAction
+              icon="arrow.uturn.backward"
               disabled={!ids.length}
               onPress={() => {
                 dispatch({ type: 'restore', ids });
@@ -98,7 +100,10 @@ export function SelectNotesScreen() {
                 title={group}
                 footer={
                   deleted ? (
-                    <Text>Deleting permanently removes the writing, audio, and transcript.</Text>
+                    <Text>
+                      Deleting permanently removes the note and writing. Audio stays in your
+                      library.
+                    </Text>
                   ) : undefined
                 }
               >
@@ -126,7 +131,12 @@ export function SelectNotesScreen() {
                       <HStack modifiers={[contentShape(shapes.rectangle())]}>
                         <NoteRow
                           note={note}
-                          folderName={folders.find((f) => f.id === note.folderId)?.name ?? 'Notes'}
+                          folderName={
+                            folderId
+                              ? undefined
+                              : (folders.find((f) => f.id === note.folderId)?.name ?? 'Notes')
+                          }
+                          preview={folderId || deleted ? notePreview(note, recordings) : undefined}
                         />
                         <Image
                           modifiers={[

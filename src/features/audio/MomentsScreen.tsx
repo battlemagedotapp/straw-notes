@@ -1,3 +1,4 @@
+import { useAudioNavigation } from '@/features/audio/useAudioNavigation';
 import {
   Button,
   ContentUnavailableView,
@@ -21,8 +22,9 @@ import {
 } from '@expo/ui/swift-ui/modifiers';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/ui/tokens';
-import { useNotes, useAudio } from '../notes/NotesProvider';
+import { useNotes, useAudio, useRecordings } from '../notes/NotesProvider';
 import { formatTime } from './model';
+import { momentExcerpt } from './momentPresentation';
 export function MomentsScreen() {
   const { noteId, audioId, captureId } = useLocalSearchParams<{
     noteId?: string;
@@ -31,22 +33,33 @@ export function MomentsScreen() {
   }>();
   const { notes } = useNotes();
   const audio = useAudio();
+  const recordings = useRecordings();
   const router = useRouter();
+  const audioNavigation = useAudioNavigation();
+  const note = notes.find((n) => n.id === noteId);
   const items = captureId
-    ? [audio.capture, ...audio.pending]
-        .filter((c) => c?.id === captureId)
-        .flatMap((c) => (c ? [{ ...c, durationMs: c.elapsedMs }] : []))
-    : notes
-        .filter((n) => !noteId || n.id === noteId)
-        .flatMap((n) => n.audio)
-        .filter((a) => !audioId || a.id === audioId);
+    ? audio.capture?.id === captureId
+      ? [{ ...audio.capture, durationMs: audio.capture.elapsedMs }]
+      : []
+    : recordings.filter(
+        (r) =>
+          !r.deletedAt &&
+          (!noteId || note?.recordingIds.includes(r.id)) &&
+          (!audioId || r.id === audioId),
+      );
   const count = items.reduce((n, a) => n + a.moments.length, 0);
   return (
     <>
-      <Stack.Screen options={{ title: 'Bookmarks' }} />
+      <Stack.Screen options={{ title: 'Marked moments' }} />
       {captureId ? (
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button onPress={() => router.back()}>Close</Stack.Toolbar.Button>
+          <Stack.Toolbar.Button
+            icon="xmark"
+            accessibilityLabel="Close marked moments"
+            onPress={() => router.back()}
+          >
+            Close
+          </Stack.Toolbar.Button>
         </Stack.Toolbar>
       ) : null}
       <Host style={{ flex: 1 }}>
@@ -87,19 +100,15 @@ export function MomentsScreen() {
                       modifiers={[buttonStyle('plain')]}
                       onPress={() =>
                         captureId
-                          ? router.push({
-                              pathname: '/moment',
-                              params: { captureId, momentId: m.id },
-                            })
-                          : router.push({
-                              pathname: '/transcript/[id]',
-                              params: { id: a.id, at: m.timeMs },
-                            })
+                          ? audioNavigation.openCapture(captureId, true)
+                          : audioNavigation.openRecording(a.id, m.timeMs)
                       }
                     >
                       <HStack modifiers={[contentShape(shapes.rectangle())]}>
                         <VStack alignment="leading" spacing={4}>
-                          <Text modifiers={[font({ textStyle: 'body' })]}>{m.name}</Text>
+                          <Text modifiers={[font({ textStyle: 'body' })]}>
+                            {formatTime(m.timeMs)}
+                          </Text>
                           <Text
                             modifiers={[
                               font({ textStyle: 'subheadline' }),
@@ -107,9 +116,7 @@ export function MomentsScreen() {
                               foregroundColor(colors.secondary),
                             ]}
                           >
-                            {formatTime(m.timeMs)} ·{' '}
-                            {a.segments.findLast((s) => s.startMs <= m.timeMs)?.text ??
-                              'Marked moment'}
+                            {momentExcerpt(a.segments, m.timeMs)}
                           </Text>
                         </VStack>
                         <Spacer />

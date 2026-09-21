@@ -1,27 +1,15 @@
 /* eslint-disable react-hooks/immutability -- Expo useNativeState exposes native scroll bindings through .value. */
+import { ContentUnavailableView, ScrollView, VStack, useNativeState } from '@expo/ui/swift-ui';
 import {
-  Button,
-  ContentUnavailableView,
-  HStack,
-  ScrollView,
-  Text,
-  VStack,
-  useNativeState,
-} from '@expo/ui/swift-ui';
-import {
-  buttonStyle,
-  font,
-  foregroundColor,
   frame,
   id,
   onScrollPhaseChange,
+  onAppear,
   padding,
   scrollPosition,
   scrollTargetLayout,
 } from '@expo/ui/swift-ui/modifiers';
-import { useEffect, useState, type ReactNode } from 'react';
-import { colors } from '@/ui/tokens';
-import { useAccessibility } from '@/ui/useAccessibility';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Moment, TranscriptSegment } from '../notes/types';
 import { TranscriptPassage } from './TranscriptPassage';
 
@@ -30,108 +18,113 @@ export function TranscriptPassages({
   live = false,
   initialTimeMs,
   positionMs,
-  playing = false,
+  following,
+  onManualScroll,
   moments = [],
   onSeek,
-  onBookmark,
+  onToggleMoment,
   header,
+  followEnabled = true,
+  jump,
 }: {
   header?: ReactNode;
+  jump?: { timeMs: number; key: number };
+  followEnabled?: boolean;
   segments: TranscriptSegment[];
   live?: boolean;
   initialTimeMs?: number;
   positionMs?: number;
-  playing?: boolean;
+  following: boolean;
+  onManualScroll: () => void;
   moments?: Moment[];
   onSeek?: (timeMs: number) => void;
-  onBookmark?: (segment: TranscriptSegment) => void;
+  onToggleMoment?: (timeMs: number) => void;
 }) {
+  const appliedEntry = useRef<number | undefined>(undefined);
+  const appliedJump = useRef<number | undefined>(undefined);
+  const [ready, setReady] = useState(false);
   const target = useNativeState<string | null>(null);
-  const [following, setFollowing] = useState(true);
-  const { largeText } = useAccessibility();
-  const active = [...segments].reverse().find((s) => s.startMs <= (positionMs ?? -1));
+  const active = segments.findLast((s) => s.startMs <= (positionMs ?? -1));
   const followId = live ? segments.at(-1)?.id : active?.id;
   useEffect(() => {
-    if (following && followId && (live || playing)) target.value = followId;
-  }, [following, followId, live, playing, target]);
+    if (ready && followEnabled && following && followId) target.value = followId;
+  }, [ready, followEnabled, following, followId, target]);
   useEffect(() => {
-    if (initialTimeMs !== undefined)
-      target.value = [...segments].reverse().find((s) => s.startMs <= initialTimeMs)?.id ?? null;
-  }, [initialTimeMs, segments, target]);
+    if (
+      ready &&
+      followEnabled &&
+      initialTimeMs !== undefined &&
+      appliedEntry.current !== initialTimeMs &&
+      segments.length
+    ) {
+      appliedEntry.current = initialTimeMs;
+      target.value = segments.findLast((s) => s.startMs <= initialTimeMs)?.id ?? null;
+    }
+  }, [ready, followEnabled, initialTimeMs, segments, target]);
+  useEffect(() => {
+    if (!followEnabled) {
+      target.value = 'workspace-controls';
+      appliedEntry.current = undefined;
+    }
+  }, [followEnabled, target]);
+  useEffect(() => {
+    if (jump && appliedJump.current !== jump.key) {
+      appliedJump.current = jump.key;
+      target.value = segments.findLast((s) => s.startMs <= jump.timeMs)?.id ?? null;
+    }
+  }, [jump, segments, target]);
   return (
-    <VStack spacing={8} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity })]}>
-      <ScrollView
+    <ScrollView
+      modifiers={[
+        onAppear(() => setReady(true)),
+        scrollPosition(target, { anchor: 'top' }),
+        onScrollPhaseChange((phase) => {
+          if (phase === 'interacting') onManualScroll();
+        }),
+      ]}
+    >
+      <VStack
+        alignment="leading"
+        spacing={24}
         modifiers={[
-          padding({ horizontal: 16 }),
-          scrollPosition(target, { anchor: 'top' }),
-          onScrollPhaseChange((phase) => {
-            if (phase === 'interacting') setFollowing(false);
-          }),
+          scrollTargetLayout(),
+          padding({ top: 8, bottom: 16, horizontal: 16 }),
+          frame({ maxWidth: Infinity, alignment: 'leading' }),
         ]}
       >
-        <VStack
-          alignment="leading"
-          spacing={24}
-          modifiers={[scrollTargetLayout(), padding({ vertical: 8 })]}
-        >
-          {header}
-          {segments.length ? (
-            segments.map((segment) => {
-              const marked = moments.some(
-                (m) =>
-                  m.timeMs >= segment.startMs &&
-                  m.timeMs < (segments[segments.indexOf(segment) + 1]?.startMs ?? Infinity),
-              );
-              const selected = active?.id === segment.id && !live;
-              return (
-                <VStack key={segment.id} alignment="leading" modifiers={[id(segment.id)]}>
-                  <TranscriptPassage
-                    segment={segment}
-                    live={live}
-                    largeText={largeText}
-                    selected={selected}
-                    marked={marked}
-                    onSeek={onSeek}
-                    onBookmark={onBookmark}
-                  />
-                </VStack>
-              );
-            })
-          ) : (
-            <ContentUnavailableView
-              title={live ? 'Waiting for words…' : 'No transcript'}
-              systemImage="text.bubble"
-              description={
-                live ? 'Your words will appear here.' : 'Your recording is still available.'
-              }
-            />
-          )}
-        </VStack>
-      </ScrollView>
-      {(live && !following) || playing ? (
-        <HStack
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: live ? 'center' : 'leading' }),
-            padding({ horizontal: 24, bottom: 16 }),
-          ]}
-        >
-          {!following ? (
-            <Button
-              label={live ? 'Follow live' : 'Follow audio'}
-              systemImage="chevron.down"
-              modifiers={[buttonStyle('bordered')]}
-              onPress={() => {
-                setFollowing(true);
-                target.value = followId ?? null;
-              }}
-            />
-          ) : !live ? (
-            <Text modifiers={[font({ textStyle: 'caption' }), foregroundColor(colors.signal)]}>
-              Following audio
-            </Text>
-          ) : null}
-        </HStack>
-      ) : null}
-    </VStack>
+        <VStack modifiers={[id('workspace-controls')]}>{header}</VStack>
+        {segments.length ? (
+          segments.map((segment, index) => {
+            const moment = moments.find(
+              (m) =>
+                m.timeMs >= segment.startMs &&
+                m.timeMs < (segments[index + 1]?.startMs ?? Infinity),
+            );
+            const selected = active?.id === segment.id && !live;
+            return (
+              <VStack key={segment.id} alignment="leading" modifiers={[id(segment.id)]}>
+                <TranscriptPassage
+                  segment={segment}
+                  selected={selected}
+                  marked={Boolean(moment)}
+                  onSeek={onSeek}
+                  onToggleMoment={
+                    onToggleMoment
+                      ? () => onToggleMoment(moment?.timeMs ?? segment.startMs)
+                      : undefined
+                  }
+                />
+              </VStack>
+            );
+          })
+        ) : (
+          <ContentUnavailableView
+            title={live ? 'Waiting for words…' : 'No transcript'}
+            systemImage="text.bubble"
+            description={live ? 'Your words will appear here.' : 'Your audio is still available.'}
+          />
+        )}
+      </VStack>
+    </ScrollView>
   );
 }

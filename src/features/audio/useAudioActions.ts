@@ -1,33 +1,29 @@
+import { useAudioNavigation } from '@/features/audio/useAudioNavigation';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { createId, useAppDispatch, useAudio } from '../notes/NotesProvider';
 import { newNote } from '../notes/model';
-import type { AudioAttachment } from '../notes/types';
+import type { Recording } from '../notes/types';
 import { formatTime } from './model';
 
 export function useAudioActions() {
   const audio = useAudio();
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const start = () => {
-    dispatch({ type: 'audio', action: { type: 'start', id: createId(), title: 'New recording' } });
-    router.push('/capture');
-  };
+  const audioNavigation = useAudioNavigation();
+  const openCapture = (id: string) => audioNavigation.openCapture(id);
   return {
     closePlayer(audioId: string) {
       dispatch({ type: 'audio', action: { type: 'closePlayer', audioId } });
     },
-    discardRecording(captureId: string, onDiscard?: () => void) {
-      const item =
-        audio.capture?.id === captureId
-          ? audio.capture
-          : audio.pending.find((c) => c.id === captureId);
-      if (!item) return;
+    discardCapture(captureId: string, onDiscard?: () => void) {
+      const c = audio.capture;
+      if (c?.id !== captureId) return;
       Alert.alert(
-        'Discard this recording?',
-        `The ${formatTime(item.elapsedMs)} just captured will be lost.`,
+        'Discard audio?',
+        `The ${formatTime(c.elapsedMs)} just captured will be lost. Any writing is kept.`,
         [
-          { text: 'Keep', style: 'cancel' },
+          { text: 'Cancel', style: 'cancel' },
           {
             text: 'Discard',
             style: 'destructive',
@@ -39,62 +35,72 @@ export function useAudioActions() {
         ],
       );
     },
-    openPending() {
-      if (audio.pending.length === 1)
-        router.push({ pathname: '/destination', params: { captureId: audio.pending[0]!.id } });
-      else router.push('/pending-recordings');
-    },
-    startRecording() {
+    startCapture(noteId?: string) {
       if (audio.capture) {
-        Alert.alert(
-          'Start a new recording?',
-          `This stops “${audio.capture.title}” at ${formatTime(audio.capture.elapsedMs)}. The audio is kept.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Start new', onPress: start },
-          ],
-        );
-      } else if (audio.playback.status === 'playing') {
-        Alert.alert(
-          'Start recording?',
-          `This pauses playback at ${formatTime(audio.playback.positionMs)}. You can return to it at any time.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Start recording', onPress: start },
-          ],
-        );
-      } else start();
+        openCapture(audio.capture.id);
+        return;
+      }
+      const now = new Date();
+      const captureId = createId();
+      dispatch({
+        type: 'audio',
+        action: {
+          type: 'start',
+          id: captureId,
+          title:
+            'Audio · ' +
+            now.toLocaleString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            }),
+          noteId,
+        },
+      });
+      openCapture(captureId);
     },
     write(folderId = 'personal') {
       const id = createId();
       dispatch({ type: 'create', note: newNote(id, folderId, new Date().toISOString()) });
       router.push({ pathname: '/note/[id]/edit', params: { id } });
     },
-    play(item: AudioAttachment) {
-      const play = () =>
+    writeForCapture() {
+      const c = audio.capture;
+      if (!c) return;
+      const id = c.noteId ?? createId();
+      if (!c.noteId)
+        dispatch({
+          type: 'writeForCapture',
+          captureId: c.id,
+          note: newNote(id, 'personal', new Date().toISOString()),
+        });
+      audioNavigation.openNote(id, true);
+    },
+    finish(captureId: string) {
+      dispatch({ type: 'finishCapture', captureId, now: new Date().toISOString() });
+    },
+    play(item: Recording) {
+      if (audio.capture) {
+        const captureId = audio.capture.id;
+        Alert.alert('Save and play?', 'Save your current audio before playback starts.', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Save and play',
+            onPress: () =>
+              dispatch({
+                type: 'finishCapture',
+                captureId,
+                now: new Date().toISOString(),
+                playAfterId: item.id,
+              }),
+          },
+        ]);
+      } else
         dispatch({
           type: 'audio',
           action: { type: 'play', audioId: item.id, durationMs: item.durationMs },
         });
-      if (audio.capture)
-        Alert.alert(
-          'Finish recording to play audio?',
-          'Your captured audio will be kept until you choose where to save it.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Finish and play',
-              onPress: () => {
-                dispatch({
-                  type: 'audio',
-                  action: { type: 'finish', captureId: audio.capture?.id },
-                });
-                play();
-              },
-            },
-          ],
-        );
-      else play();
     },
   };
 }

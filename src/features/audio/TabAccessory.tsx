@@ -1,3 +1,4 @@
+import { useAudioNavigation } from '@/features/audio/useAudioNavigation';
 import { Button, HStack, Host } from '@expo/ui/swift-ui';
 import {
   frame,
@@ -11,35 +12,24 @@ import {
 } from '@expo/ui/swift-ui/modifiers';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useRouter, useGlobalSearchParams, usePathname } from 'expo-router';
-import { useAppDispatch, useAudio, useNotes } from '../notes/NotesProvider';
-import type { AudioAttachment } from '../notes/types';
+import { useAppDispatch, useAudio, useRecordings } from '../notes/NotesProvider';
+import type { Recording } from '../notes/types';
 import { useAudioActions } from './useAudioActions';
 import { useAccessibility } from '@/ui/useAccessibility';
 import { colors } from '@/ui/tokens';
-import { AudioAccessory } from './AudioAccessory';
-import { RecordingAccessory } from './RecordingAccessory';
+import { PlaybackAccessory } from './PlaybackAccessory';
+import { CaptureAccessory } from './CaptureAccessory';
 import { usePlayback } from './usePlayback';
 import { audioPresentation } from './model';
 
-function PlaybackAccessory({
-  item,
-  compact,
-  largeText,
-}: {
-  item: AudioAttachment;
-  compact: boolean;
-  largeText: boolean;
-}) {
+function ConnectedPlaybackAccessory({ item, compact }: { item: Recording; compact: boolean }) {
   const playback = usePlayback(item);
-  const router = useRouter();
-  const { closePlayer } = useAudioActions();
+  const audioNavigation = useAudioNavigation();
   return (
-    <AudioAccessory
+    <PlaybackAccessory
       {...playback}
       compact={compact}
-      largeText={largeText}
-      onOpen={() => router.push({ pathname: '/transcript/[id]', params: { id: item.id } })}
-      onClose={() => closePlayer(item.id)}
+      onOpen={() => audioNavigation.openRecording(item.id)}
     />
   );
 }
@@ -50,41 +40,39 @@ export function TabAccessory() {
   const folderId = path.startsWith('/folders/') ? params.id : undefined;
   const compact = NativeTabs.BottomAccessory.usePlacement() === 'inline';
   const audio = useAudio();
-  const { notes } = useNotes();
+  const recordings = useRecordings();
   const actions = useAudioActions();
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const audioNavigation = useAudioNavigation();
   const { largeText, reduceMotion } = useAccessibility();
   const playbackId = audio.playback.status === 'idle' ? null : audio.playback.audioId;
-  const item = notes.flatMap((n) => n.audio).find((a) => a.id === playbackId);
+  const item = recordings.filter((r) => !r.deletedAt).find((a) => a.id === playbackId);
   const presentation = audioPresentation(audio);
   return (
     <Host ignoreSafeArea="container" style={{ flex: 1 }}>
       <HStack
         spacing={16}
         modifiers={[
-          padding({ horizontal: compact ? 4 : 16 }),
+          padding({ leading: 16, trailing: compact ? 4 : 16 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
         ]}
       >
         {presentation === 'capture' && audio.capture ? (
-          <RecordingAccessory
+          <CaptureAccessory
             capture={audio.capture}
             compact={compact}
-            largeText={largeText}
             reduceMotion={reduceMotion}
-            onOpen={() => router.push('/capture')}
-            onDiscard={() => actions.discardRecording(audio.capture!.id)}
-            onToggle={() => dispatch({ type: 'audio', action: { type: 'toggleCapture' } })}
+            onOpen={() => audioNavigation.openCapture(audio.capture!.id)}
+            onToggle={() =>
+              dispatch({
+                type: 'audio',
+                action: { type: 'toggleCapture', captureId: audio.capture!.id },
+              })
+            }
           />
         ) : presentation === 'playback' && item ? (
-          <PlaybackAccessory item={item} compact={compact} largeText={largeText} />
-        ) : presentation === 'pending' ? (
-          <Button
-            label={`Save recording${audio.pending.length > 1 ? ` (${audio.pending.length})` : ''}`}
-            systemImage="tray.and.arrow.down"
-            onPress={actions.openPending}
-          />
+          <ConnectedPlaybackAccessory item={item} compact={compact} />
         ) : (
           <HStack
             spacing={compact ? 12 : 24}
@@ -97,7 +85,7 @@ export function TabAccessory() {
             <Button
               label="Record"
               systemImage={'mic'}
-              onPress={actions.startRecording}
+              onPress={() => actions.startCapture()}
               modifiers={[
                 buttonStyle('plain'),
                 foregroundColor(colors.primary),
@@ -116,6 +104,18 @@ export function TabAccessory() {
                 ...(largeText && compact ? [labelStyle('iconOnly')] : []),
               ]}
             />
+            {!compact ? (
+              <Button
+                label="Import"
+                systemImage="square.and.arrow.down"
+                onPress={() => router.push('/import-audio')}
+                modifiers={[
+                  buttonStyle('plain'),
+                  foregroundColor(colors.primary),
+                  frame({ minHeight: 44 }),
+                ]}
+              />
+            ) : null}
           </HStack>
         )}
       </HStack>

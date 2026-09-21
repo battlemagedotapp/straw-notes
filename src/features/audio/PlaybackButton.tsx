@@ -1,6 +1,9 @@
-import { Button } from '@expo/ui/swift-ui';
+import { Button, Image } from '@expo/ui/swift-ui';
 import {
   accessibilityLabel,
+  contentShape,
+  shapes,
+  font,
   buttonStyle,
   buttonBorderShape,
   controlSize,
@@ -9,7 +12,7 @@ import {
   frame,
 } from '@expo/ui/swift-ui/modifiers';
 import { colors } from '@/ui/tokens';
-import type { PlaybackControls } from './usePlayback';
+import type { PlaybackBindings } from './usePlayback';
 
 export function PlaybackButton({
   title,
@@ -19,7 +22,7 @@ export function PlaybackButton({
   plain = false,
   positionMs = 0,
   durationMs = Infinity,
-}: Pick<PlaybackControls, 'title' | 'playing' | 'onToggle'> & {
+}: Pick<PlaybackBindings, 'title' | 'playing' | 'onToggle'> & {
   size?: 'regular' | 'large';
   plain?: boolean;
   positionMs?: number;
@@ -29,8 +32,10 @@ export function PlaybackButton({
   const action = playing ? 'Pause' : ended ? 'Replay' : 'Play';
   return (
     <Button
-      label={action}
-      systemImage={playing ? 'pause.fill' : ended ? 'arrow.counterclockwise' : 'play.fill'}
+      label={plain ? undefined : action}
+      systemImage={
+        plain ? undefined : playing ? 'pause.fill' : ended ? 'arrow.counterclockwise' : 'play.fill'
+      }
       onPress={onToggle}
       modifiers={[
         buttonStyle(plain ? 'plain' : 'glass'),
@@ -41,6 +46,17 @@ export function PlaybackButton({
         foregroundColor(colors.primary),
         accessibilityLabel(`${action} ${title}`),
       ]}
-    />
+    >
+      {plain ? (
+        <Image
+          systemName={playing ? 'pause.fill' : ended ? 'arrow.counterclockwise' : 'play.fill'}
+          modifiers={[
+            font({ textStyle: 'body' }),
+            frame({ minWidth: 44, minHeight: 44 }),
+            contentShape(shapes.rectangle()),
+          ]}
+        />
+      ) : undefined}
+    </Button>
   );
 }

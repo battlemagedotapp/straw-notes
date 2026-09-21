@@ -10,12 +10,16 @@ export interface TranscriptSegment {
 export interface Moment {
   id: string;
   timeMs: number;
-  name: string;
 }
-export interface AudioAttachment {
+export interface Recording {
   id: string;
   title: string;
   durationMs: number;
+  createdAt: string;
+  updatedAt: string;
+  origin: 'capture' | 'import';
+  transcriptStatus: 'available' | 'unavailable';
+  deletedAt?: string;
   segments: TranscriptSegment[];
   moments: Moment[];
 }
@@ -27,5 +31,5 @@ export interface Note {
   pinned: boolean;
   updatedAt: string;
   deletedAt?: string;
-  audio: AudioAttachment[];
+  recordingIds: string[];
 }

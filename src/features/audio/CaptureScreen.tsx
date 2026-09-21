@@ -1,148 +1,141 @@
-import { useUnsavedRecordingsAction } from '@/features/audio/toolbar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { colors } from '@/ui/tokens';
-import {
-  Button,
-  ContentUnavailableView,
-  Host,
-  HStack,
-  Menu,
-  Spacer,
-  Text,
-  VStack,
-} from '@expo/ui/swift-ui';
-import { font, frame, padding, labelStyle } from '@expo/ui/swift-ui/modifiers';
-import { Stack, useRouter } from 'expo-router';
+import { ContentUnavailableView, Host, Divider, VStack } from '@expo/ui/swift-ui';
+import { frame, padding } from '@expo/ui/swift-ui/modifiers';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useAccessibility } from '@/ui/useAccessibility';
-import { Feedback } from '@/ui/Feedback';
 import { createId, useAppDispatch, useAudio } from '../notes/NotesProvider';
 import { TranscriptPassages } from './TranscriptPassages';
-import { RecordingPanel } from './RecordingPanel';
+import { CaptureControls } from './CaptureControls';
 import { useAudioActions } from './useAudioActions';
+import { WorkspaceMoments } from './WorkspaceMoments';
+import { useWorkspaceSheet } from './useWorkspaceSheet';
 
 export function CaptureScreen() {
-  const { capture } = useAudio();
+  const { capture: activeCapture } = useAudio();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const [boundId] = useState(id ?? activeCapture?.id);
+  const capture = activeCapture?.id === boundId ? activeCapture : null;
+  const sheet = useWorkspaceSheet('capture');
   const dispatch = useAppDispatch();
-  const router = useRouter();
-  const unsavedAction = useUnsavedRecordingsAction();
-  const { write, discardRecording } = useAudioActions();
-  const { largeText, reduceMotion } = useAccessibility();
-  const [marked, setMarked] = useState<string | null>(null);
+  const { writeForCapture, discardCapture, finish: saveCapture } = useAudioActions();
+  const { reduceMotion } = useAccessibility();
+  const [jump, setJump] = useState<{ timeMs: number; key: number } | undefined>();
+  const [following, setFollowing] = useState(true);
+  const submitted = useRef<string | null>(null);
   useEffect(() => {
-    if (!marked) return;
-    const timeout = setTimeout(() => setMarked(null), 4000);
-    return () => clearTimeout(timeout);
-  }, [marked]);
+    if (submitted.current && !capture) {
+      submitted.current = null;
+      sheet.close();
+    }
+    if (capture?.saveError) submitted.current = null;
+  }, [capture, sheet]);
   if (!capture)
     return (
-      <Host style={{ flex: 1, backgroundColor: colors.grouped }}>
-        <ContentUnavailableView title="No active recording" systemImage="mic" />
-      </Host>
+      <>
+        <Stack.Screen options={{ ...sheet.options, title: 'Record' }} />
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            icon="xmark"
+            accessibilityLabel="Close recorder"
+            onPress={sheet.close}
+          >
+            Close
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+        <Host style={{ flex: 1 }}>
+          <ContentUnavailableView title="Nothing to record yet" systemImage="mic" />
+        </Host>
+      </>
     );
   const mark = () => {
     const momentId = createId();
-    dispatch({ type: 'audio', action: { type: 'mark', id: momentId } });
-    setMarked(momentId);
+    dispatch({ type: 'audio', action: { type: 'mark', captureId: capture.id, id: momentId } });
   };
   const finish = () => {
-    dispatch({ type: 'audio', action: { type: 'finish', captureId: capture.id } });
-    router.replace({ pathname: '/destination', params: { captureId: capture.id } });
+    submitted.current = capture.id;
+    saveCapture(capture.id);
   };
   const content = (
     <VStack
       alignment="leading"
       spacing={16}
-      modifiers={[
-        frame({ maxWidth: Infinity, alignment: 'leading' }),
-        padding({ top: 8, bottom: 8, horizontal: largeText ? 0 : 16 }),
-      ]}
+      modifiers={[frame({ maxWidth: Infinity, alignment: 'leading' }), padding({ top: 8 })]}
     >
-      <RecordingPanel
+      <CaptureControls
         capture={capture}
         onMark={mark}
-        onToggle={() => dispatch({ type: 'audio', action: { type: 'toggleCapture' } })}
+        onToggle={() =>
+          dispatch({ type: 'audio', action: { type: 'toggleCapture', captureId: capture.id } })
+        }
         onFinish={finish}
         reduceMotion={reduceMotion}
       />
-      {marked ? (
-        <HStack>
-          <Feedback title="Moment added" />
-          <Spacer />
-          <Button
-            label="Name"
-            onPress={() =>
-              router.push({
-                pathname: '/moment',
-                params: { captureId: capture.id, momentId: marked },
-              })
-            }
-          />
-        </HStack>
-      ) : null}
-      {capture.status === 'interrupted' ? (
-        <Feedback
-          title="Your recording is kept"
-          message="Resume when you’re ready, or finish to choose a note."
-        />
-      ) : null}
-      <HStack modifiers={[padding({ horizontal: 8, top: 8 })]}>
-        <Text modifiers={[font({ textStyle: 'title3', weight: 'semibold' })]}>Live transcript</Text>
-        <Spacer />
-        <Menu
-          label="Transcript actions"
-          systemImage="ellipsis"
-          modifiers={[labelStyle('iconOnly')]}
-        >
-          <Button
-            label="Marked moments"
-            systemImage="bookmark"
-            onPress={() => router.push({ pathname: '/moments', params: { captureId: capture.id } })}
-          />
-        </Menu>
-      </HStack>
+      <Divider />
+      <WorkspaceMoments
+        moments={capture.moments}
+        segments={capture.segments}
+        onSelect={(timeMs) => {
+          setFollowing(false);
+          setJump({ timeMs, key: Date.now() });
+        }}
+      />
     </VStack>
   );
   return (
     <>
-      <Stack.Screen options={{ title: capture.title }} />
+      <Stack.Screen options={{ ...sheet.options, title: 'Record' }} />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
-          icon="chevron.down"
-          accessibilityLabel="Minimize recording"
-          onPress={() => router.back()}
+          icon="xmark"
+          accessibilityLabel="Close recorder"
+          onPress={sheet.close}
         >
-          Minimize
+          Close
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        {unsavedAction}
-        <Stack.Toolbar.Button
-          icon="trash"
-          accessibilityLabel="Discard recording"
-          onPress={() => discardRecording(capture.id, () => router.back())}
-        >
-          Discard
-        </Stack.Toolbar.Button>
         <Stack.Toolbar.Button
           icon="square.and.pencil"
-          accessibilityLabel="Write while recording"
-          onPress={() => {
-            router.back();
-            write();
-          }}
+          accessibilityLabel="Write a note"
+          onPress={writeForCapture}
         >
           Write
         </Stack.Toolbar.Button>
+        <Stack.Toolbar.Menu icon="ellipsis" accessibilityLabel="Recorder actions">
+          <Stack.Toolbar.MenuAction
+            icon="text.alignleft"
+            isOn={following}
+            onPress={() => setFollowing((value) => !value)}
+          >
+            Follow Transcript
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction
+            icon="trash"
+            destructive
+            onPress={() => discardCapture(capture.id, sheet.close)}
+          >
+            Discard…
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
       </Stack.Toolbar>
-      <Host style={{ flex: 1, backgroundColor: colors.grouped }}>
-        {largeText ? (
-          <TranscriptPassages segments={capture.segments} live header={content} />
-        ) : (
-          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity })]}>
-            {content}
-            <TranscriptPassages segments={capture.segments} live />
-          </VStack>
-        )}
+      <Host style={{ flex: 1, backgroundColor: colors.background }}>
+        <TranscriptPassages
+          segments={capture.segments}
+          moments={capture.moments}
+          onToggleMoment={(timeMs) =>
+            dispatch({
+              type: 'audio',
+              action: { type: 'toggleMoment', captureId: capture.id, id: createId(), timeMs },
+            })
+          }
+          live
+          header={content}
+          followEnabled={sheet.isExpanded}
+          following={following}
+          onManualScroll={() => setFollowing(false)}
+          jump={jump}
+        />
       </Host>
     </>
   );

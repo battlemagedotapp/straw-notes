@@ -1,6 +1,6 @@
 # Notes
 
-An iPhone-only Expo SDK 57 app using native SwiftUI controls, with Penpot guiding content and interactions. Includes notes/folders/search, plain-text writing, simulated capture and playback, bookmarks, destination selection, and organization with Recently Deleted.
+An iPhone-only Expo SDK 57 app using native SwiftUI controls, with Penpot guiding content and interactions. Includes Notes/Audio/Folders and native Search, plain-text writing, independent simulated recordings, optional shared attachments, demo import, bookmarks, and separate note/recording recovery.
 
 **Audio is simulated. No microphone is accessed; all changes reset on reload.**
 
@@ -20,10 +20,12 @@ If opening times out, visit `http://<computer-LAN-IP>:9081/status` in iPhone Saf
 ## Code map
 
 - `src/app` — Router layouts and thin routes.
-- `src/features/library` — browsing, search and organization screens.
+- `src/features/library` — note browsing and folder organization screens.
 - `src/features/notes` — documents, types, app reducer and provider.
-- `src/features/audio` — audio reducer, controls, capture/transcript screens and destination drafts.
-- `src/ui` — shared semantic colors, accessibility, waveform and feedback.
+- `src/features/audio` — audio reducer, controls, capture/recording workspaces and navigation.
+- `src/features/recordings` — recording library, optional linking, demo import, session flow drafts and recording recovery.
+- `src/features/search` — cross-resource search and its pure query model.
+- `src/ui` — shared semantic colors, accessibility, waveform and resource counts.
 - `src/fixtures`, `src/dev` — demo content and development scenarios.
 - `tests/session.test.ts` — critical preservation, recovery and timing checks using Node’s test runner.
 

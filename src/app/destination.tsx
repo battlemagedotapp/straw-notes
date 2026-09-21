@@ -1,1 +1,4 @@
-export { DestinationScreen as default } from '@/features/audio/DestinationScreen';
+import { Redirect } from 'expo-router';
+export default function LegacyRecordingRoute() {
+  return <Redirect href="/(tabs)/recordings" />;
+}

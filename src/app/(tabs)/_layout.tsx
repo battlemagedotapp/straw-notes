@@ -10,6 +10,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Notes</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="doc.text" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="recordings">
+        <NativeTabs.Trigger.Label>Audio</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="waveform" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="folders">
         <NativeTabs.Trigger.Label>Folders</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="folder" />

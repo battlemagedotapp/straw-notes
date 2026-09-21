@@ -4,28 +4,25 @@ interface CaptureContent {
   id: string;
   title: string;
   elapsedMs: number;
+  noteId?: string;
+  saveError?: string;
   moments: Moment[];
   segments: TranscriptSegment[];
 }
 export type Capture = CaptureContent &
   ({ status: 'recording' } | { status: 'paused' } | { status: 'interrupted' });
-export type PendingCapture = CaptureContent & { status: 'finished' };
 export type Playback =
   | { status: 'idle' }
   | { status: 'playing' | 'paused'; audioId: string; positionMs: number; durationMs: number };
 export interface AudioState {
   capture: Capture | null;
-  pending: PendingCapture[];
   playback: Playback;
-  saveErrors: Record<string, string>;
   listeningPositions: Record<string, number>;
   playbackRate: number;
 }
 export const initialAudioState: AudioState = {
   capture: null,
-  pending: [],
   playback: { status: 'idle' },
-  saveErrors: {},
   listeningPositions: {},
   playbackRate: 1,
 };
@@ -33,17 +30,17 @@ export type AudioAction =
   | { type: 'closePlayer'; audioId: string }
   | { type: 'discard'; captureId: string }
   | { type: 'rate'; rate: number }
-  | { type: 'start'; id: string; title: string }
+  | { type: 'start'; id: string; title: string; noteId?: string }
   | { type: 'tick'; deltaMs: number; segments: TranscriptSegment[] }
-  | { type: 'toggleCapture' }
+  | { type: 'toggleCapture'; captureId: string }
   | { type: 'interrupt' }
-  | { type: 'finish'; captureId?: string }
-  | { type: 'mark'; id: string }
-  | { type: 'nameMoment'; captureId: string; momentId: string; name: string }
+  | { type: 'finished'; captureId: string }
+  | { type: 'associate'; captureId: string; noteId: string }
+  | { type: 'mark'; id: string; captureId: string }
+  | { type: 'toggleMoment'; captureId: string; id: string; timeMs: number }
   | { type: 'play'; audioId: string; durationMs: number }
   | { type: 'seek'; audioId: string; durationMs: number; positionMs: number }
-  | { type: 'saveFailed'; captureId: string }
-  | { type: 'attached'; captureId: string };
+  | { type: 'saveFailed'; captureId: string };
 
 function rememberPlayback(state: AudioState, playback: Playback): AudioState {
   return playback.status === 'idle'
@@ -56,11 +53,21 @@ function rememberPlayback(state: AudioState, playback: Playback): AudioState {
         },
       };
 }
-/** One projection for every global placement. Pending audio must never hide a player. */
-export function audioPresentation(state: AudioState): 'capture' | 'playback' | 'pending' | 'idle' {
+/** One projection for every global placement. Capture takes priority over an explicitly opened player. */
+export function audioPresentation(state: AudioState): 'capture' | 'playback' | 'idle' {
   if (state.capture) return 'capture';
   if (state.playback.status !== 'idle') return 'playback';
-  return state.pending.length ? 'pending' : 'idle';
+  return 'idle';
+}
+
+/** Shared wording across workspace, library, accessory and header. */
+export function captureStatus(capture: Capture): string {
+  if (capture.saveError) return 'Save failed';
+  return capture.status === 'recording'
+    ? 'Recording'
+    : capture.status === 'interrupted'
+      ? 'Interrupted'
+      : 'Paused';
 }
 
 export function audioReducer(state: AudioState, action: AudioAction): AudioState {
@@ -70,27 +77,24 @@ export function audioReducer(state: AudioState, action: AudioAction): AudioState
       return state.playback.status !== 'idle' && state.playback.audioId === action.audioId
         ? rememberPlayback({ ...state, playback: { status: 'idle' } }, state.playback)
         : state;
-    case 'discard': {
-      const saveErrors = { ...state.saveErrors };
-      delete saveErrors[action.captureId];
-      return {
-        ...state,
-        capture: capture?.id === action.captureId ? null : capture,
-        pending: state.pending.filter((c) => c.id !== action.captureId),
-        saveErrors,
-      };
-    }
+    case 'discard':
+      return capture?.id === action.captureId ? { ...state, capture: null } : state;
+    case 'associate':
+      return capture?.id === action.captureId && !capture.noteId
+        ? { ...state, capture: { ...capture, noteId: action.noteId } }
+        : state;
     case 'rate':
       return [0.75, 1, 1.25, 1.5, 2].includes(action.rate)
         ? { ...state, playbackRate: action.rate }
         : state;
     case 'start':
+      if (capture) return state;
       return {
         ...state,
-        pending: capture ? [...state.pending, { ...capture, status: 'finished' }] : state.pending,
         capture: {
           id: action.id,
           title: action.title,
+          noteId: action.noteId,
           status: 'recording',
           elapsedMs: 0,
           moments: [],
@@ -128,12 +132,13 @@ export function audioReducer(state: AudioState, action: AudioAction): AudioState
       };
     }
     case 'toggleCapture':
-      return capture
+      return capture?.id === action.captureId
         ? {
             ...state,
             capture: {
               ...capture,
               status: capture.status === 'recording' ? 'paused' : 'recording',
+              saveError: undefined,
             },
           }
         : state;
@@ -146,43 +151,38 @@ export function audioReducer(state: AudioState, action: AudioAction): AudioState
             ? { ...state.playback, status: 'paused' }
             : state.playback,
       };
-    case 'finish':
-      return capture && (!action.captureId || capture.id === action.captureId)
-        ? {
-            ...state,
-            capture: null,
-            pending: [...state.pending, { ...capture, status: 'finished' }],
-          }
-        : state;
+    case 'finished':
+      return capture?.id === action.captureId ? { ...state, capture: null } : state;
     case 'mark':
-      return capture
+      return capture?.id === action.captureId &&
+        !capture.moments.some((moment) => moment.timeMs === capture.elapsedMs)
         ? {
             ...state,
             capture: {
               ...capture,
-              moments: [
-                ...capture.moments,
-                { id: action.id, timeMs: capture.elapsedMs, name: 'Moment' },
-              ],
+              moments: [...capture.moments, { id: action.id, timeMs: capture.elapsedMs }],
             },
           }
         : state;
-    case 'nameMoment': {
-      const rename = <T extends CaptureContent>(item: T): T =>
-        item.id !== action.captureId
-          ? item
-          : {
-              ...item,
-              moments: item.moments.map((m) =>
-                m.id === action.momentId ? { ...m, name: action.name.trim() || m.name } : m,
-              ),
-            };
+    case 'toggleMoment':
+      if (
+        capture?.id !== action.captureId ||
+        !Number.isFinite(action.timeMs) ||
+        action.timeMs < 0 ||
+        action.timeMs > capture.elapsedMs
+      )
+        return state;
       return {
         ...state,
-        capture: capture ? rename(capture) : null,
-        pending: state.pending.map(rename),
+        capture: {
+          ...capture,
+          moments: capture.moments.some((m) => m.timeMs === action.timeMs)
+            ? capture.moments.filter((m) => m.timeMs !== action.timeMs)
+            : [...capture.moments, { id: action.id, timeMs: action.timeMs }].sort(
+                (a, b) => a.timeMs - b.timeMs,
+              ),
+        },
       };
-    }
     case 'play': {
       if (capture) return state; // Recording must be finished before playback can begin.
       const current = state.playback;
@@ -215,23 +215,16 @@ export function audioReducer(state: AudioState, action: AudioAction): AudioState
         },
       };
     case 'saveFailed':
-      return {
-        ...state,
-        saveErrors: {
-          ...state.saveErrors,
-          [action.captureId]:
-            'Couldn’t save the recording. Your audio and destination are still here. Try again.',
-        },
-      };
-    case 'attached': {
-      const saveErrors = { ...state.saveErrors };
-      delete saveErrors[action.captureId];
-      return {
-        ...state,
-        pending: state.pending.filter((c) => c.id !== action.captureId),
-        saveErrors,
-      };
-    }
+      return capture?.id === action.captureId
+        ? {
+            ...state,
+            capture: {
+              ...capture,
+              status: 'paused',
+              saveError: 'Couldn’t save. Your audio is kept. Try again.',
+            },
+          }
+        : state;
   }
 }
 export function formatTime(ms: number): string {

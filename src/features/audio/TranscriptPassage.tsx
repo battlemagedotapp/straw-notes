@@ -1,135 +1,112 @@
-import { Button, ContextMenu, HStack, Image, Text, VStack, ZStack } from '@expo/ui/swift-ui';
+import { useWindowDimensions } from 'react-native';
+import { Button, ContextMenu, HStack, Image, Text, VStack } from '@expo/ui/swift-ui';
 import {
   accessibilityLabel,
+  padding,
   backgroundOverlay,
-  buttonStyle,
-  cornerRadius,
+  contentShape,
+  shapes,
+  lineLimit,
   fixedSize,
   font,
   foregroundColor,
   frame,
   monospacedDigit,
-  padding,
 } from '@expo/ui/swift-ui/modifiers';
 import { colors } from '@/ui/tokens';
 import type { TranscriptSegment } from '../notes/types';
 import { formatTime } from './model';
 
-/** A passage owns its typography and actions; the surrounding scroll view owns following. */
+type PassageProps = { segment: TranscriptSegment; selected: boolean; marked: boolean };
+
+/** Shared typography for the reading surface and native context-menu preview. */
+function PassageContent({
+  segment,
+  selected,
+  marked,
+  preview = false,
+}: PassageProps & { preview?: boolean }) {
+  return (
+    <VStack
+      alignment="leading"
+      spacing={8}
+      modifiers={[
+        frame({ maxWidth: Infinity, alignment: 'leading' }),
+        contentShape(shapes.rectangle()),
+      ]}
+    >
+      <HStack spacing={8} modifiers={[font({ textStyle: 'caption' })]}>
+        <Text
+          modifiers={[
+            monospacedDigit(),
+            foregroundColor(selected ? colors.signal : colors.secondary),
+          ]}
+        >
+          {formatTime(segment.startMs)}
+        </Text>
+        {marked ? (
+          <Image
+            systemName="bookmark.fill"
+            modifiers={[
+              font({ textStyle: 'caption' }),
+              foregroundColor(colors.signal),
+              accessibilityLabel('Marked moment'),
+            ]}
+          />
+        ) : null}
+      </HStack>
+      <Text
+        modifiers={[
+          font({ textStyle: 'body', weight: selected ? 'medium' : 'regular' }),
+          ...(preview ? [lineLimit(8)] : [fixedSize({ horizontal: false, vertical: true })]),
+          frame({ maxWidth: Infinity, alignment: 'leading' }),
+        ]}
+      >
+        {segment.text}
+      </Text>
+    </VStack>
+  );
+}
+
 export function TranscriptPassage({
   segment,
-  live,
-  largeText,
   selected,
   marked,
   onSeek,
-  onBookmark,
-}: {
-  segment: TranscriptSegment;
-  live: boolean;
-  largeText: boolean;
-  selected: boolean;
-  marked: boolean;
+  onToggleMoment,
+}: PassageProps & {
   onSeek?: (timeMs: number) => void;
-  onBookmark?: (segment: TranscriptSegment) => void;
+  onToggleMoment?: () => void;
 }) {
-  const timestamp = (
-    <Text
-      modifiers={[
-        font({ textStyle: 'caption' }),
-        monospacedDigit(),
-        foregroundColor(selected ? colors.signal : colors.secondary),
-      ]}
-    >
-      {formatTime(segment.startMs)}
-    </Text>
-  );
-  const text = (
-    <Text
-      modifiers={[
-        font({ textStyle: live ? 'title3' : 'body' }),
-        fixedSize({ horizontal: false, vertical: true }),
-      ]}
-    >
-      {segment.text}
-    </Text>
-  );
-  if (live)
-    return (
-      <VStack alignment="leading" spacing={8} modifiers={[padding({ horizontal: 8 })]}>
-        {largeText ? (
-          <>
-            {timestamp}
-            {text}
-          </>
-        ) : (
-          <HStack alignment="top" spacing={16}>
-            <VStack alignment="leading" modifiers={[frame({ minWidth: 44, alignment: 'leading' })]}>
-              {timestamp}
-            </VStack>
-            {text}
-          </HStack>
-        )}
-      </VStack>
-    );
+  const { width } = useWindowDimensions();
+  const passage = <PassageContent segment={segment} selected={selected} marked={marked} />;
+  if (!onSeek && !onToggleMoment) return passage;
   return (
     <ContextMenu>
-      <ContextMenu.Trigger>
-        <ZStack
-          alignment="topTrailing"
+      <ContextMenu.Trigger>{passage}</ContextMenu.Trigger>
+      <ContextMenu.Preview>
+        <VStack
           modifiers={[
-            padding({ horizontal: selected ? 16 : 8, vertical: selected ? 12 : 0 }),
-            ...(selected ? [backgroundOverlay({ color: colors.selection }), cornerRadius(12)] : []),
+            padding({ all: 16 }),
+            frame({ width: Math.min(width - 48, 400) }),
+            backgroundOverlay({ color: colors.background }),
           ]}
         >
-          <VStack
-            alignment="leading"
-            spacing={8}
-            modifiers={[frame({ maxWidth: Infinity, alignment: 'leading' })]}
-          >
-            {timestamp}
-            <Button
-              onPress={() => onSeek?.(segment.startMs)}
-              modifiers={[
-                buttonStyle('plain'),
-                accessibilityLabel(`Seek to ${formatTime(segment.startMs)}: ${segment.text}`),
-              ]}
-            >
-              {text}
-            </Button>
-          </VStack>
-          {onBookmark && (selected || marked) ? (
-            <Button
-              onPress={() => onBookmark(segment)}
-              modifiers={[
-                buttonStyle('plain'),
-                accessibilityLabel(marked ? 'Remove bookmark' : 'Bookmark passage'),
-              ]}
-            >
-              <Image
-                systemName={marked ? 'bookmark.fill' : 'bookmark'}
-                modifiers={[
-                  font({ textStyle: 'body' }),
-                  foregroundColor(colors.signal),
-                  frame({ minWidth: 44, minHeight: 44, alignment: 'top' }),
-                ]}
-              />
-            </Button>
-          ) : null}
-        </ZStack>
-      </ContextMenu.Trigger>
+          <PassageContent segment={segment} selected={selected} marked={marked} preview />
+        </VStack>
+      </ContextMenu.Preview>
       <ContextMenu.Items>
-        {onBookmark ? (
+        {onToggleMoment ? (
           <Button
-            label={marked ? 'Remove bookmark' : 'Bookmark passage'}
+            label={marked ? 'Remove moment' : 'Mark moment'}
             systemImage={marked ? 'bookmark.slash' : 'bookmark'}
-            onPress={() => onBookmark(segment)}
+            onPress={onToggleMoment}
           />
         ) : null}
         {onSeek ? (
           <Button
-            label="Go to this moment"
-            systemImage="waveform"
+            label="Seek to this passage"
+            systemImage="play"
             onPress={() => onSeek(segment.startMs)}
           />
         ) : null}

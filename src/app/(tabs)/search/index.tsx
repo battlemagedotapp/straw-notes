@@ -1,4 +1,1 @@
-import { LibraryScreen } from '@/features/library/LibraryScreen';
-export default function Search() {
-  return <LibraryScreen search />;
-}
+export { SearchScreen as default } from '@/features/search/SearchScreen';

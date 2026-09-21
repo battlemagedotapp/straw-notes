@@ -1,4 +1,4 @@
-import { useAudioTaskAction, useUnsavedRecordingsAction } from '../audio/toolbar';
+import { useAudioTaskAction } from '../audio/useAudioTaskAction';
 import { colors } from '@/ui/tokens';
 import {
   ContentUnavailableView,
@@ -29,7 +29,6 @@ function Editor({ note }: { note: Note }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const audioAction = useAudioTaskAction();
-  const unsavedAction = useUnsavedRecordingsAction();
   const save = (field: 'title' | 'body', value: string) =>
     dispatch({
       type: 'write',
@@ -42,7 +41,6 @@ function Editor({ note }: { note: Note }) {
     <>
       <Stack.Toolbar placement="right">
         {audioAction}
-        {unsavedAction}
         <Stack.Toolbar.Button
           variant="done"
           onPress={() => router.dismissTo({ pathname: '/note/[id]', params: { id: note.id } })}

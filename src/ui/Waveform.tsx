@@ -1,9 +1,44 @@
 import { RNHostView, VStack } from '@expo/ui/swift-ui';
 import { frame } from '@expo/ui/swift-ui/modifiers';
-import { View } from 'react-native';
-import { useMemo, useState } from 'react';
+import { View, type ColorValue } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Line } from 'react-native-svg';
 import { colors } from './tokens';
+
+const AnimatedLine = Animated.createAnimatedComponent(Line);
+
+/** Interpolate provider-driven samples; never create another audio clock. */
+function SignalBar({
+  value,
+  x,
+  stroke,
+  animate,
+}: {
+  value: number;
+  x: number;
+  stroke: ColorValue;
+  animate: boolean;
+}) {
+  const amplitude = useSharedValue(value);
+  useEffect(() => {
+    amplitude.value = animate ? withTiming(value, { duration: 450 }) : value;
+  }, [value, animate, amplitude]);
+  const animatedProps = useAnimatedProps(() => ({
+    y1: 32 - Math.max(0, Math.min(1, amplitude.value)) * 29,
+    y2: 32 + Math.max(0, Math.min(1, amplitude.value)) * 29,
+  }));
+  return (
+    <AnimatedLine
+      x1={x}
+      x2={x}
+      animatedProps={animatedProps}
+      stroke={stroke}
+      strokeWidth={2.5}
+      strokeLinecap="round"
+    />
+  );
+}
 
 /** Parent-proposed width, explicit signal height. No intrinsic/percentage measurement cycle. */
 export function Waveform({
@@ -12,12 +47,14 @@ export function Waveform({
   live = false,
   paused = false,
   height = 64,
+  animate = false,
 }: {
   samples: readonly number[];
   progress?: number;
   live?: boolean;
   paused?: boolean;
   height?: number;
+  animate?: boolean;
 }) {
   const [width, setWidth] = useState(0);
   // Only the signal density changes; the SwiftUI parent still owns layout.
@@ -46,12 +83,11 @@ export function Waveform({
             preserveAspectRatio="none"
           >
             {bars.map((value, i) => (
-              <Line
+              <SignalBar
                 key={i}
-                x1={i * 6 + 3}
-                x2={i * 6 + 3}
-                y1={32 - Math.max(0, Math.min(1, value)) * 29}
-                y2={32 + Math.max(0, Math.min(1, value)) * 29}
+                x={i * 6 + 3}
+                value={value}
+                animate={animate}
                 stroke={
                   paused
                     ? colors.inactiveSignal
@@ -61,8 +97,6 @@ export function Waveform({
                         ? colors.signal
                         : colors.inactiveSignal
                 }
-                strokeWidth={2.5}
-                strokeLinecap="round"
               />
             ))}
           </Svg>

@@ -13,7 +13,7 @@
 - `src/ui` contains genuinely shared custom visuals and semantic tokens. Use native primitives directly rather than wrapping every Button, Text, List, or field.
 - `src/fixtures` supplies deterministic demo content; `src/dev` supplies scenarios. They enter through the root provider or the development-only route, not through production feature models.
 - Keep one audio state owner above navigation and both bottom accessory instances. Never put a second recorder/playback timer in a component. Keep note writing separate from transcript data.
-- `notes/model.ts` is the transaction boundary for attaching captured audio to a note. It updates the note and removes pending capture together; preserve its idempotence.
+- `notes/model.ts` is the transaction boundary for attaching captured audio to a note. It saves capture independently and atomically links recording references to notes; preserve both operations’ idempotence.
 - Form drafts stay local; committed note writing updates session state immediately. Sheet dismissal must retain unfinished captured audio.
 
 ## Native UI
@@ -35,6 +35,6 @@
 - Notes uses `xyz.amankushwaha.apps.notes`. Shared iPhone automation uses `xyz.amankushwaha.tools.wda.xctrunner`; keep its signing material outside this repository under `~/.local/share/ios-automation`. Use the host-wide `ios-wda` command across app projects.
 - Install native dependencies using `npx expo install`; keep SDK-compatible peers and the npm lockfile. Never solve dependency errors with `--force` or `--legacy-peer-deps`.
 - Run `npm run check`, `npx expo install --check`, `npx expo-doctor`, and `npm run export:ios` for implementation changes.
-- Tests should cover meaningful state transitions, preservation, and failure recovery. Do not snapshot native UI mocks as proof of native correctness.
+- Keep automated tests minimal and focused on critical risks: lost or duplicated content, atomic resource operations, failure recovery, and shared audio/navigation state preservation. Prefer extending a relevant existing scenario over adding a test for every fix. Do not add tests for simple formatting, presentation helpers, routine setters, or speculative edge cases without a concrete high-impact risk. Do not snapshot native UI mocks as proof of native correctness.
 - Linux checks do not validate iOS layout. Follow `docs/device-validation.md` and report device acceptance as pending until actually tested.
 - Keep setup guides, architecture, and checklists reusable. Record review findings in the review conversation and temporary evidence under ignored `artifacts/device/`; do not append session history, screenshot findings, or one-off results to those guides.

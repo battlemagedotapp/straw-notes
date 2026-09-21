@@ -37,6 +37,7 @@ export function SelectFoldersScreen() {
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon="trash"
+          tintColor={colors.destructive}
           disabled={!ids.length}
           onPress={() => remove(ids, () => router.back())}
         >

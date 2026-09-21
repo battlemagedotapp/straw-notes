@@ -1,8 +1,8 @@
 import { useAppDispatch, useAudio } from '../notes/NotesProvider';
-import type { AudioAttachment } from '../notes/types';
+import type { Recording } from '../notes/types';
 import { useAudioActions } from './useAudioActions';
 
-export interface PlaybackControls {
+export interface PlaybackBindings {
   title: string;
   durationMs: number;
   positionMs: number;
@@ -11,7 +11,7 @@ export interface PlaybackControls {
   onToggle: () => void;
   onSeek: (positionMs: number) => void;
 }
-export function usePlayback(item: AudioAttachment): PlaybackControls {
+export function usePlayback(item: Recording): PlaybackBindings {
   const { playback, capture, listeningPositions } = useAudio();
   const dispatch = useAppDispatch();
   const { play } = useAudioActions();

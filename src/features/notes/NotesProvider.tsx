@@ -9,27 +9,48 @@ import {
 } from 'react';
 import { AppState as NativeAppState } from 'react-native';
 import type { AudioState } from '../audio/model';
-import { appReducer, createAppState, type AppAction, type NotesState } from './model';
-import type { Folder, Note, TranscriptSegment } from './types';
+import {
+  appReducer,
+  createAppState,
+  type AppAction,
+  type NotesState,
+  type OperationResult,
+  type Notice,
+} from './model';
+import type { Folder, Note, Recording, TranscriptSegment } from './types';
 
 const NotesContext = createContext<NotesState | null>(null);
 const AudioContext = createContext<AudioState | null>(null);
 const DispatchContext = createContext<Dispatch<AppAction> | null>(null);
-const FailureContext = createContext(false);
+const RecordingsContext = createContext<Recording[]>([]);
+const OperationsContext = createContext<Record<string, OperationResult>>({});
+const NoticeContext = createContext<Notice | null>(null);
+const SamplesContext = createContext<ImportSample[]>([]);
+export interface ImportSample {
+  id: string;
+  title: string;
+  durationMs: number;
+  outcome: 'success' | 'retry' | 'unsupported';
+  segments: TranscriptSegment[];
+}
 
 export function NotesProvider({
   children,
   initialNotes,
   folders,
   simulatedTranscript,
+  initialRecordings,
+  importSamples,
 }: {
   children: ReactNode;
   initialNotes: Note[];
   folders: Folder[];
   simulatedTranscript: TranscriptSegment[];
+  initialRecordings: Recording[];
+  importSamples: ImportSample[];
 }) {
   const [state, dispatch] = useReducer(appReducer, undefined, () =>
-    createAppState(initialNotes, folders),
+    createAppState(initialNotes, folders, initialRecordings),
   );
   const running =
     state.audio.capture?.status === 'recording' || state.audio.playback.status === 'playing';
@@ -56,7 +77,13 @@ export function NotesProvider({
     <DispatchContext value={dispatch}>
       <NotesContext value={state.notes}>
         <AudioContext value={state.audio}>
-          <FailureContext value={state.failNextSave}>{children}</FailureContext>
+          <RecordingsContext value={state.recordings}>
+            <OperationsContext value={state.operations}>
+              <NoticeContext value={state.notice}>
+                <SamplesContext value={importSamples}>{children}</SamplesContext>
+              </NoticeContext>
+            </OperationsContext>
+          </RecordingsContext>
         </AudioContext>
       </NotesContext>
     </DispatchContext>
@@ -82,8 +109,17 @@ export function useAppDispatch() {
   if (!value) throw new Error('useAppDispatch requires NotesProvider');
   return value;
 }
-export function useSaveFailureEnabled() {
-  return useContext(FailureContext);
+export function useRecordings() {
+  return useContext(RecordingsContext);
+}
+export function useOperations() {
+  return useContext(OperationsContext);
+}
+export function useNotice() {
+  return useContext(NoticeContext);
+}
+export function useImportSamples() {
+  return useContext(SamplesContext);
 }
 let sequence = 0;
 export function createId() {

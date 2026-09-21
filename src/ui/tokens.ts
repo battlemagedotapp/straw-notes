@@ -11,5 +11,6 @@ export const colors = {
   selection: PlatformColor('tertiarySystemFill'),
   signal: PlatformColor('systemBlue'),
   recording: PlatformColor('systemRed'),
+  destructive: PlatformColor('systemRed'),
   inactiveSignal: PlatformColor('tertiaryLabel'),
 };

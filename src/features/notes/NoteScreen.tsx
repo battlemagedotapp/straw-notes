@@ -1,5 +1,5 @@
-import { useAudioTaskAction, useUnsavedRecordingsAction } from '../audio/toolbar';
-import { ContentUnavailableView, Host, ScrollView, Text, VStack } from '@expo/ui/swift-ui';
+import { useAudioTaskAction } from '../audio/useAudioTaskAction';
+import { Button, ContentUnavailableView, Host, ScrollView, Text, VStack } from '@expo/ui/swift-ui';
 import {
   fixedSize,
   font,
@@ -12,7 +12,13 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/ui/tokens';
 import { AudioAttachment } from '../audio/AudioAttachment';
 import { useAudioActions } from '../audio/useAudioActions';
-import { useAppDispatch, useDeletedNotes, useNotes } from './NotesProvider';
+import {
+  useAppDispatch,
+  useDeletedNotes,
+  useNotes,
+  useRecordings,
+  useAudio,
+} from './NotesProvider';
 import { noteTitle } from './model';
 import { useNoteActions } from './useNoteActions';
 import { documentMetadata } from './presentation';
@@ -21,22 +27,26 @@ export function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { notes, folders } = useNotes();
   const deleted = useDeletedNotes();
+  const recordings = useRecordings();
+  const { capture } = useAudio();
   const note = [...notes, ...deleted].find((n) => n.id === id);
-  const audioAction = useAudioTaskAction({ attachmentIds: note?.audio.map((a) => a.id) });
+  const audioAction = useAudioTaskAction({ attachmentIds: note?.recordingIds });
   const router = useRouter();
-  const unsavedAction = useUnsavedRecordingsAction({ menu: true });
   const audio = useAudioActions();
   const actions = useNoteActions();
   const dispatch = useAppDispatch();
   if (!note)
     return (
-      <Host style={{ flex: 1, backgroundColor: colors.background }}>
-        <ContentUnavailableView
-          title="Note unavailable"
-          description="This note is no longer available."
-          systemImage="note.text"
-        />
-      </Host>
+      <>
+        <Stack.Screen options={{ title: 'Note unavailable' }} />
+        <Host style={{ flex: 1, backgroundColor: colors.background }}>
+          <ContentUnavailableView
+            title="Note unavailable"
+            description="This note is no longer available."
+            systemImage="note.text"
+          />
+        </Host>
+      </>
     );
   const edit = () => router.push({ pathname: '/note/[id]/edit', params: { id } });
   return (
@@ -49,7 +59,6 @@ export function NoteScreen() {
             Edit
           </Stack.Toolbar.Button>
           <Stack.Toolbar.Menu icon="ellipsis" accessibilityLabel="Note actions">
-            {unsavedAction}
             <Stack.Toolbar.MenuAction
               icon="pencil"
               onPress={() => router.push({ pathname: '/rename-note', params: { id } })}
@@ -74,9 +83,19 @@ export function NoteScreen() {
             >
               Marked moments
             </Stack.Toolbar.MenuAction>
-            <Stack.Toolbar.MenuAction icon="mic" onPress={audio.startRecording}>
-              Record
-            </Stack.Toolbar.MenuAction>
+            <Stack.Toolbar.Menu title="Add audio" icon="waveform">
+              <Stack.Toolbar.MenuAction
+                icon="waveform"
+                onPress={() =>
+                  router.push({ pathname: '/choose-recordings', params: { noteId: id } })
+                }
+              >
+                Choose audio
+              </Stack.Toolbar.MenuAction>
+              <Stack.Toolbar.MenuAction icon="mic" onPress={() => audio.startCapture(id)}>
+                {capture ? 'Open recorder' : 'Record new'}
+              </Stack.Toolbar.MenuAction>
+            </Stack.Toolbar.Menu>
             <Stack.Toolbar.MenuAction
               icon="trash"
               destructive
@@ -128,18 +147,49 @@ export function NoteScreen() {
                   </Text>
                 ))}
               </VStack>
-            ) : !note.audio.length ? (
+            ) : !note.recordingIds.length ? (
               <Text modifiers={[foregroundColor(colors.secondary)]}>Start writing with Edit.</Text>
             ) : null}
-            {note.deletedAt
-              ? note.audio.map((item) => <Text key={item.id}>{item.title} · Audio recording</Text>)
-              : note.audio.map((item) => <AudioAttachment key={item.id} item={item} />)}
+            {note.recordingIds.map((recordingId) => {
+              const item = recordings.find((r) => r.id === recordingId);
+              if (!item) return null;
+              const unlink = () =>
+                dispatch({
+                  type: 'unlinkRecording',
+                  noteId: id,
+                  recordingId: item.id,
+                  now: new Date().toISOString(),
+                });
+              return (
+                <VStack key={item.id} alignment="leading" spacing={8}>
+                  {note.deletedAt ? (
+                    <Text>
+                      {item.title} · {item.deletedAt ? 'Audio deleted' : 'Audio'}
+                    </Text>
+                  ) : item.deletedAt ? (
+                    <>
+                      <Text>{item.title} · Audio deleted</Text>
+                      <Button
+                        label="Restore audio"
+                        systemImage="arrow.uturn.backward"
+                        onPress={() => dispatch({ type: 'restoreRecordings', ids: [item.id] })}
+                      />
+                    </>
+                  ) : (
+                    <AudioAttachment item={item} />
+                  )}
+                  {!note.deletedAt ? <Button label="Remove from Note" onPress={unlink} /> : null}
+                </VStack>
+              );
+            })}
           </VStack>
         </ScrollView>
       </Host>
       {note.deletedAt ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
+            icon="arrow.uturn.backward"
+            accessibilityLabel="Restore note"
             onPress={() => {
               dispatch({ type: 'restore', ids: [id] });
               router.back();
@@ -149,6 +199,7 @@ export function NoteScreen() {
           </Stack.Toolbar.Button>
           <Stack.Toolbar.Button
             icon="trash"
+            tintColor={colors.destructive}
             accessibilityLabel="Delete permanently"
             onPress={() => actions.remove([id], () => router.back())}
           >

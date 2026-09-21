@@ -4,30 +4,38 @@ Penpot defines content, hierarchy and interactions; Apple supplies control styli
 
 **Implemented** describes front-end behavior, not device acceptance. **Partial** identifies deferred controls on an otherwise implemented board. **Reference** identifies guidance, not an extra route. Use the [device checklist](device-validation.md) for visual acceptance; keep review results outside this document.
 
+## Independent recording resources
+
+Notes reference canonical recordings; Folders organize notes only. Notes, Recordings and Folders use native tabs with a separate Search role. Finish saves audio and returns to the caller. Penpot's forced destination flow is replaced by optional Add to Note / Choose Recordings sheets. Library, transcript and playback visuals remain references for content hierarchy, not resource ownership.
+
+Recordings supports independent captured/imported audio, shared references, rename, selection and Recently Deleted. Demo audio import exercises partial success and retry with clearly labeled samples; Files access and audio decoding remain deferred. Native Lists, Pickers, menus and Router sheets provide these controls. A deleted recording stays recoverable in notes until restored or permanently removed. Deleting a note never deletes its recordings.
+
+Search indexes canonical recordings once rather than indexing each note attachment. Accessory states are capture, player and idle; pending-recording UI is retired. References to the earlier destination/pending designs below describe the source drawings, superseded by this resource model.
+
 ## Flow and native mapping
 
-| Area         | Entry and transitions                                                        | Implementation                                                                           |
-| ------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Library      | Notes/Folders → note; Search → note or transcript timestamp                  | Router NativeTabs/Stack, native search, SwiftUI List/Section; `features/library`         |
-| Organization | Select/sort/pin → move, trash, restore; folder create/rename/delete          | Native menus, list rows, forms and confirmations; `features/library`                     |
-| Document     | Reader → edit; attachment → transcript or playback controls                  | One ScrollView, Text and multiline TextField; `features/notes`                           |
-| Capture      | Record → pause/resume/mark → minimize or Finish                              | Native modal, custom RecordingPanel and transcript composition; `features/audio`         |
-| Destination  | Finish → choose new/existing note → attach; cancel/failure → retry           | Native searchable sheet, List, Picker and TextField; draft retained per capture          |
-| Playback     | Attachment → transcript; passage/bookmark → timestamp; controls → seek/speed | Distinct attachment, compact player and accessory compositions; native Slider and Picker |
-| Recovery     | Interrupted capture, missing transcript, pending audio, failed attachment    | Native ContentUnavailableView, alerts and app Feedback                                   |
+| Area         | Entry and transitions                                                              | Implementation                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Library      | Notes/Folders → note; Recordings → detail; Search → resources                      | Router NativeTabs/Stack and SwiftUI Lists; `features/library`, `features/recordings`, `features/search` |
+| Organization | Select/sort/pin → move, trash, restore; folder create/rename/delete                | Native menus, list rows, forms and confirmations; `features/library`                                    |
+| Document     | Reader → edit; attachment → expandable audio workspace                             | One ScrollView, Text and multiline TextField; `features/notes`                                          |
+| Capture      | Record → pause/resume/mark → minimize or Finish                                    | Native modal, custom CaptureControls and transcript composition; `features/audio`                       |
+| Linking      | Saved recordings → optional new/existing note; cancel/failure → retry              | Native searchable sheet, List selection, Picker and TextField; retained source-keyed drafts             |
+| Playback     | Attachment → transcript; passage/bookmark → timestamp; controls → seek/speed       | Distinct attachment, compact player and accessory compositions; native Slider and Picker                |
+| Recovery     | Interrupted/failed capture save, missing transcript, deleted audio, failed linking | Native ContentUnavailableView, alerts and app Feedback                                                  |
 
 See [audio/navigation lifecycle](audio-navigation-lifecycle.md) for ownership and transitions.
 
 ## Native substitutions
 
 - Router owns tabs, Search, sheets, safe areas and keyboards. `NativeTabs.BottomAccessory` owns glass, width, height and regular/inline placement. Native collapse takes precedence over Penpot’s larger Search gap and smaller idle capsule.
-- Reader/editor and selection actions use native header controls. Contextual audio menus replace Penpot’s keyboard-adjacent capsule. Writing from capture minimizes its modal before opening the editor.
-- RecordingPanel, AudioAttachment, CompactPlayback and the two audio accessories remain distinct compositions. Their custom hierarchy follows Penpot; native buttons retain system styling. Only waveform rendering uses RNHostView/SVG, with width proposed by its parent and no intrinsic sizing loop.
+- Reader/editor and selection actions use native header controls. Contextual audio menus replace Penpot’s keyboard-adjacent capsule. Writing from capture replaces its modal with the associated note editor.
+- CaptureControls, PlaybackControls, AudioAttachment and the two audio accessories remain distinct compositions within the shared task flow. Their custom hierarchy follows Penpot; native buttons retain system styling. Only waveform rendering uses RNHostView/SVG, with width proposed by its parent and no intrinsic sizing loop.
 - Waveforms are decorative. Tapping an attachment or compact waveform opens native playback controls with an accessible Slider; there is no custom seeking gesture.
-- Documents have one scrolling container. Recording/transcript transport sits above transcript scrolling at standard text sizes and joins that scroll region at accessibility sizes.
+- Documents and recording detail each have one scrolling container. Capture transport sits above transcript scrolling at standard text sizes and joins that scroll region at accessibility sizes.
 - Custom content uses semantic system colors and dynamic text. The Expo Go target uses public `foregroundColor` and `backgroundOverlay` modifiers; no native patches or styling adapter. Phone masks, legacy tokens and simulated glass are excluded.
-- Destination keeps title, folder, choice and query across cancellation/retry. Name forms blur their native field before closing and protect dirty changes. Confirmation/cancellation lives in the header, without duplicate footers.
-- Player close retains position without confirmation. Capture discard requires confirmation. Close controls and multiple-pending recovery extend the drawn boards deliberately.
+- Optional linking keeps title, folder, choice and query across dismissal/retry. Name forms blur their native field before closing and protect dirty changes. Confirmation/cancellation lives in the header, without duplicate footers.
+- Player close retains position without confirmation. Capture discard requires confirmation. Close controls and independent recording recovery extend the drawn boards deliberately.
 - Personal is the default folder; deleting another folder moves its notes there. Recently Deleted has no promised automatic retention period. These fill gaps in the designs.
 - Plain text replaces rich editing. Real recording, permissions, persistence, imports/exports, summaries, settings and system extensions are deferred. Do not expose inactive actions or treat illustrative Penpot values as real service capabilities.
 
@@ -54,9 +62,9 @@ Behavior and source guidance; retained as reference.
 - [Library · Empty](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa27172f8a60) — Implemented.
 - [Search · No results](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa2717acd263) — Implemented.
 - [Recording · Paused](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa2718298407) — Implemented.
-- [Recording · Moment added](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa2718ef0d1c) — Implemented.
-- [Import · Complete](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa2719ae4366) — Deferred.
-- [Import · Retry or continue](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa271a57363a) — Deferred.
+- [Recording · Moment added](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa2718ef0d1c) — Replaced by the moment count/bookmark update; no transient confirmation block.
+- [Import · Complete](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa2719ae4366) — Implemented with session-only demo samples; native file access deferred.
+- [Import · Retry or continue](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa271a57363a) — Implemented with session-only demo samples; native file access deferred.
 - [Audio attachment · Playing](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa288334248e) — Implemented.
 - [Audio accessory · paused · Regular](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa3b5e43b95e) — Implemented.
 - [Audio accessory · paused · Inline](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa3b5f8397cd) — Implemented.
@@ -86,7 +94,7 @@ Behavior and source guidance; retained as reference.
 - [Capture · Expanded](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99bfa79fe0a) — Implemented.
 - [Capture · Recording · Scrolled](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=bdf28c7a-0593-80f5-8008-a9edbcfdc558) — Implemented.
 - [Capture · Conflicts](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99c145b9ee3) — Implemented.
-- [Capture · Destinations](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99c21050080) — Implemented.
+- [Capture · Destinations](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99c21050080) — Replaced by independent save and optional Add to Note.
 
 ### [Notes · Read, write and share](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa295ef265a2)
 
@@ -105,20 +113,20 @@ Behavior and source guidance; retained as reference.
 
 ### [Import · Source and destination](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa296d5e1442)
 
-- [Import · Source picker](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99e972259dc) — Deferred.
-- [Import · Review](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99e9f3e4fc3) — Deferred.
-- [Import · Destination](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99eaf25cb16) — Deferred.
+- [Import · Source picker](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99e972259dc) — Implemented with session-only demo samples; native file access deferred.
+- [Import · Review](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99e9f3e4fc3) — Implemented with session-only demo samples; native file access deferred.
+- [Import · Destination](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99eaf25cb16) — Replaced by optional Add to Note after successful import.
 
 ### [Settings · Preferences and access](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa296ec77194)
 
 - [Settings · Hub · Modal](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa43595d7ad6) — Deferred.
 - [Settings · Processing](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99ef143c879) — Deferred.
 - [Settings · Storage](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99efed606a1) — Deferred.
-- [Settings · Manage recordings](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99f0b540443) — Deferred.
+- [Settings · Manage recordings](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99f0b540443) — Replaced by the Recordings tab and its native selection actions.
 - [Settings · Privacy](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99f164753ad) — Deferred.
 - [Settings · iOS integrations](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=78a9636f-f866-80fd-8008-a99f20af58f0) — Deferred.
 - [Management · Selection excerpt](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa47bacbe496) — Implemented.
-- [Native · Remove recordings confirmation](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa47bf7ff328) — Deferred.
+- [Native · Remove recordings confirmation](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa47bf7ff328) — Implemented with affected-note explanation and recoverable deletion.
 
 ### [Responsive · 375 and 440 point widths](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dfac74&board-id=1e58aafe-2add-80f4-8008-aa298971ae1e)
 
@@ -173,12 +181,12 @@ Behavior and source guidance; retained as reference.
 - [Overlay · Discard recording alert](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=78a9636f-f866-80fd-8008-a9a1bfa22270) — Implemented.
 - [Overlay · Stop and delete alert](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=78a9636f-f866-80fd-8008-a9a1c7a3b2c2) — Deferred.
 - [Overlay · Permanent delete alert](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=78a9636f-f866-80fd-8008-a9a1d039e731) — Implemented.
-- [Overlay · Dirty editor sheet](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=78a9636f-f866-80fd-8008-a9a19684ae33) — Implemented for moment, note and folder names.
+- [Overlay · Dirty editor sheet](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=78a9636f-f866-80fd-8008-a9a19684ae33) — Implemented for note and folder names; moments have no editable names.
 
 ### [06 · Input and destination states](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa46c1eecfdc)
 
 - [Empty · Confirm disabled](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa46c1fa022c) — Implemented for name forms.
-- [Save failed · Value retained](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa46ccb1fd8b) — Partial — Destination capture save only.
+- [Save failed · Value retained](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa46ccb1fd8b) — Implemented for capture save/retry; optional attachment failures retain saved audio.
 - [Link · Invalid address with keyboard](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa46d8e343d1) — Deferred.
 - [375 pt · Larger text and long name](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa4852e41fe5) — Acceptance reference.
 - [Dark · Native input surface](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192dffd59&board-id=1e58aafe-2add-80f4-8008-aa485330861f) — Acceptance reference.
@@ -207,8 +215,8 @@ Behavior and source guidance; retained as reference.
 - [State · Summary loading](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc3a42f0d) — Deferred.
 - [State · Summary unavailable](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc3ec64d3) — Deferred.
 - [State · Transcript processing](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc438cefa) — Deferred.
-- [State · Import unsupported](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc4824879) — Deferred.
-- [State · Import partial success](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc4cb959d) — Deferred.
+- [State · Import unsupported](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc4824879) — Implemented with session-only demo samples; native file access deferred.
+- [State · Import partial success](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc4cb959d) — Implemented with session-only demo samples; native file access deferred.
 - [State · Library unavailable](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa1dc5158a4d) — Deferred.
 
 ### [02 · Access and combined states](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa2694c3caec)
@@ -245,3 +253,51 @@ Behavior and source guidance; retained as reference.
 - [_Search Field](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa4775213845) — Deferred.
 - [Retained destination](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa477577841c) — Deferred.
 - [Native button · Try again](https://design.penpot.app/#/workspace?team-id=c514c1fb-1cda-8125-8008-a4d56197d986&file-id=c514c1fb-1cda-8125-8008-a97344a09405&page-id=78a9636f-f866-80fd-8008-a99192e04f72&board-id=1e58aafe-2add-80f4-8008-aa477673214b) — Deferred.
+
+The expanded idle bottom accessory offers Record, Write and Import. Native inline placement keeps Record and Write only; Import opens the existing demo audio sheet.
+
+### Native accessory height
+
+Expo SDK 57 `NativeTabs.BottomAccessory` accepts children but no height override. React Native Screens wraps it in UIKit `UITabAccessory`, observes the native wrapper frame, and applies that size to its React layout. A height on the child `Host` or SwiftUI frame changes only the content, not the outer glass or reserved space. Keep content within the native proposal; do not use a fixed inner height to simulate a taller accessory. Matching Penpot’s 62–64-point expanded accessories requires an outer-height capability that this integration does not expose. The native inline placement remains system-sized as well.
+
+Audio accessories use a single row within the native height: leading 24/32-point waveform, capture status or playback title, then Play/Pause. Expanded placement includes the timer immediately before that control; inline placement omits time. Both use a 16-point leading inset, with native outer geometry unchanged. Close/Discard are available in the workspace rather than the accessory. SDK 57's bottom accessory API exposes no native swipe dismissal, so the app does not intercept tab-collapse gestures. Playback titles stay static with native single-line truncation; their open action announces the full title. Live red waveform motion follows the shared capture clock and respects Reduce Motion.
+
+### Native header backgrounds
+
+Root and tab stacks explicitly use `headerTransparent: true`. SDK 57 otherwise supplies the theme card color for ordinary headers while large-title headers default to transparent on iOS, creating different backgrounds across routes. Keep native glass toolbar items and automatic iOS scroll-edge effects; do not add a second `headerBlurEffect`, custom backdrop, or manual header-height inset. SwiftUI Lists, Forms and ScrollViews retain native safe-area handling. A sheet's grouped content background and presentation dimming are separate from its header and remain native.
+
+### Button content and emphasis
+
+Use SF Symbols alone for familiar compact controls: transport, bookmarks, compose/edit, trash, minimize and sheet dismissal. Give icon-only controls meaningful spoken labels and at least 44-point custom targets. Use symbols with visible text for explanatory content actions such as Add to Note, Open recording, View transcript, import and recovery. Keep secondary contextual actions (Undo, Remove from Note, Change selection) quiet; content rows retain their readable titles.
+
+Native toolbar buttons show either a symbol or text; their `icon` hides the visible label. Preserve explicit Save, Done, Cancel, Select/Select All, Add and Import/Review/Retry labels where they clarify the operation. Confirmations use the native done variant. Menus retain text with consistent action symbols. Destructive menu/content buttons use their destructive role; standalone trash toolbar buttons use semantic systemRed via tintColor because this toolbar API has no destructive role. Ordinary transport/header controls keep native neutral styling and primary content actions retain system accent emphasis. Retry uses a retry arrow, Replay a counterclockwise arrow; neither reuses the Stop symbol.
+
+### Expandable audio workspaces
+
+Capture and saved recordings each use a single Router form sheet. Native compact/full detents replace the separate controls-to-detail navigation; default compact sizes are 50% and 60%, respectively. One SwiftUI scrolling owner contains controls, moments and transcript. The native grabber and scroll expansion own resizing; no custom gesture, sheet geometry or second player is introduced. Transcript timestamp links and accessibility sizes open expanded. Native scroll coordination must be rechecked when Expo UI or Router versions change.
+
+The header X dismisses presentation only. Capture offers Finish/Retry and confirmed Discard in its actions menu. Saved recordings offer Dismiss player, Rename, Add to Note and Delete in that menu. Write / Add to Note use native pencil toolbar actions with accessible labels; linked notes and writing leave the workspace. The original Penpot designs remain reference material, not additional routes. Old playback/capture-control links redirect to canonical workspaces.
+
+The selected W2 compact reel uses a shared `AudioReel` composition: a parent-sized decorative waveform and the native Slider share a center line, with a native glass transport button alongside. Capture uses the same geometry without a Slider. The waveform follows the shared audio clock; all other controls, symbols, menus, typography and materials are native SwiftUI. Capture and playback share full-width body passages and a caption metadata row; the bookmark symbol has its own caption style. Active passage emphasis does not change padding or add a card.
+
+The transcript heading opens a native Moments menu. Moments are timestamp-only checkpoints; selecting a moment scrolls without seeking. Write is in the header, speed in a native menu, and routine success adds no transient content. Follow Transcript is a checked native More-menu action in both workspaces. Manual scrolling and moment browsing turn it off; enabling it follows the current passage when expanded. No floating arrow, visibility calculations, or overlay clearance is needed.
+
+Secondary recording relationships live in More → Connected Notes, a native list with its own route and empty/unavailable states. It is a child task, not another audio workspace. Its Add action replaces that child with the existing linking flow; opening a note removes the audio workspace and its children. The transcript has no resource footer. Audio ScrollView padding is applied to the child content stack: the viewport and its native indicator extend to the sheet edge while text keeps a 16-point reading margin. This follows Apple's distinction between the scroll viewport and content margins; no custom scrollbar or sheet safe-area overrides are used.
+
+## Audio terminology
+
+User-facing content is **Audio** (native waveform symbol); **Record** uses the microphone symbol. **Recording**, **Paused** and **Interrupted** describe live capture. **Open recorder** returns to unfinished capture; **Open audio** opens saved content. Use short contextual menu labels such as Rename, Delete and Restore, with accessible names on icon-only controls. Internal Recording types, IDs and route paths remain stable.
+
+## Note list density
+
+All Notes shows title and one metadata line (date, audio count when present, folder). Inside a folder, keep a two-line content preview and omit the repeated folder name. Selection uses its source list’s density. Search and recovery retain previews. Preview text prefers the first nonempty writing line, then the first readable transcript from active audio in attachment order; missing content adds no placeholder row. Native semantic typography and title wrapping remain shared.
+
+Relationship counts are inline metadata after a middle-dot separator, using native caption-size SF Symbols followed by a tightly spaced number only for counts above one: waveform for attached audio, doc.text for notes using audio. Both use the same ResourceCount composition, secondary color, no capsule, and omit zero. Use a SwiftUI Image and Text with 3-point spacing instead of Label’s larger icon gutter. Accessibility labels retain the full relationship meaning. Counts sit beside textual metadata and remain untruncated while longer metadata can truncate.
+
+Audio workspace reels start directly with the waveform/seeker. Capture status occupies the trailing caption beside elapsed time, replacing the generic Elapsed label; playback keeps elapsed and remaining time. Neither uses a separate status/date row above the reel.
+
+## Quiet action feedback
+
+Routine success adds no banners, list rows, or document blocks. Undo Delete lives in the Notes/Audio library More menus and remains available for the latest deletion; Recently Deleted is the durable session recovery route. One root event listener owns deletion announcements and the native failed-attachment alert. This deliberately replaces inline completion notices. Active capture uses existing native header/accessory controls, never a block above the note title. Saved attachments retain their embedded players; feedback cleanup does not change their controls or layout. Capture status/Retry/Resume own capture errors; import and linking forms keep actionable errors in their task.
+
+Moments contain only an ID and timestamp; no editable names or naming sheet. Moment menus and lists show a short excerpt from the matching transcript passage alongside the timestamp, derived from the transcript rather than stored as a name. Capture and saved transcript passages share mark/remove context actions and a native custom preview with inner padding, bounded width and an eight-line excerpt. The full passage remains in the transcript. Saved audio additionally offers Seek; live capture cannot seek. Verify long-press previews and mark/remove in both workspaces on iPhone.

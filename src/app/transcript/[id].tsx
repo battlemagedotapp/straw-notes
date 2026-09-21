@@ -1,1 +1,1 @@
-export { TranscriptScreen as default } from '@/features/audio/TranscriptScreen';
+export { RecordingWorkspaceScreen as default } from '@/features/audio/RecordingWorkspaceScreen';

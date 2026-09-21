@@ -1,150 +1,152 @@
+import { useAudioNavigation } from '@/features/audio/useAudioNavigation';
 import { Button, Host, List, Section, Text } from '@expo/ui/swift-ui';
-import { listStyle } from '@expo/ui/swift-ui/modifiers';
-import { useRouter } from 'expo-router';
-import { createSeedNotes, folders, transcript } from '@/fixtures/notes';
-import { CompactPlayback } from '@/features/audio/CompactPlayback';
-import { usePlayback } from '@/features/audio/usePlayback';
-import { AudioAttachment } from '@/features/audio/AudioAttachment';
-import { RecordingPanel } from '@/features/audio/RecordingPanel';
-import { useAppDispatch, useSaveFailureEnabled } from '@/features/notes/NotesProvider';
-import { Feedback } from '@/ui/Feedback';
-
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
+import {
+  navigationPreviews,
+  navigationPreviewActions,
+  type NavigationPreview,
+} from './navigationScenarios';
+import { createSeedNotes, createSeedRecordings, folders, transcript } from '@/fixtures/notes';
+import { createId, useAppDispatch, useAudio } from '@/features/notes/NotesProvider';
 export function ScenariosScreen() {
   const dispatch = useAppDispatch();
-  const failure = useSaveFailureEnabled();
   const router = useRouter();
-  const reset = (empty: boolean) => {
-    dispatch({ type: 'reset', folders, notes: empty ? [] : createSeedNotes() });
-    router.dismissAll();
+  const audioNavigation = useAudioNavigation();
+  const { capture } = useAudio();
+  const { preview } = useLocalSearchParams<{ preview?: string }>();
+  const applied = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !preview ||
+      applied.current === preview ||
+      !navigationPreviews.includes(preview as NavigationPreview)
+    )
+      return;
+    applied.current = preview;
+    navigationPreviewActions(preview as NavigationPreview).forEach(dispatch);
     router.replace('/(tabs)/notes');
-  };
-  const capture = (state: 'recording' | 'paused' | 'interrupted' | 'finished') => {
-    dispatch({ type: 'reset', folders, notes: createSeedNotes() });
+  }, [preview, dispatch, router]);
+  const reset = () =>
     dispatch({
-      type: 'audio',
-      action: { type: 'start', id: 'scenario-capture', title: 'Morning walk idea' },
+      type: 'reset',
+      notes: createSeedNotes(),
+      folders,
+      recordings: createSeedRecordings(),
     });
+  const seed = (status: 'recording' | 'paused' | 'interrupted' | 'failed') => {
+    reset();
+    const id = createId();
+    dispatch({ type: 'audio', action: { type: 'start', id, title: 'Demo audio' } });
     dispatch({ type: 'audio', action: { type: 'tick', deltaMs: 32000, segments: transcript } });
-    if (state === 'paused') dispatch({ type: 'audio', action: { type: 'toggleCapture' } });
-    if (state === 'interrupted') dispatch({ type: 'audio', action: { type: 'interrupt' } });
-    if (state === 'finished') {
-      dispatch({ type: 'audio', action: { type: 'finish' } });
-      dispatch({ type: 'failNextSave' });
-      router.push('/destination');
-    } else router.push('/capture');
+    if (status === 'paused')
+      dispatch({ type: 'audio', action: { type: 'toggleCapture', captureId: id } });
+    if (status === 'interrupted') dispatch({ type: 'audio', action: { type: 'interrupt' } });
+    if (status === 'failed') {
+      dispatch({ type: 'setFailure', operationId: 'save:' + id });
+      dispatch({ type: 'finishCapture', captureId: id, now: new Date().toISOString() });
+    }
+    audioNavigation.openCapture(id);
   };
-  const sample = createSeedNotes().flatMap((n) => n.audio)[0]!;
-  const playback = usePlayback(sample);
   return (
-    <Host style={{ flex: 1 }}>
-      <List modifiers={[listStyle('insetGrouped')]}>
-        <Section
-          title="Session fixtures"
-          footer={
+    <>
+      <Stack.Screen options={{ title: 'Developer scenarios' }} />
+      <Host style={{ flex: 1 }}>
+        <List>
+          <Section title="Session-only demo">
             <Text>
-              All audio is simulated. Reloading resets every change. Scenarios replace the current
-              demo session.
+              Audio is simulated. Reload resets every change. Scenarios replace the session.
             </Text>
-          }
-        >
-          <Button label="Populated library" onPress={() => reset(false)} />
-          <Button
-            label="Long library"
-            onPress={() => {
-              const notes = createSeedNotes();
-              dispatch({
-                type: 'reset',
-                folders,
-                notes: [
-                  ...notes,
-                  ...Array.from({ length: 8 }, (_, index) => ({
-                    ...notes[2]!,
-                    id: `long-${index}`,
-                    title: [
-                      'Autumn trip',
-                      'Books to return',
-                      'Saturday market',
-                      'Dinner ideas',
-                      'A quiet afternoon',
-                      'Weekend plans',
-                      'Places to visit',
-                      'Thoughts for tomorrow',
-                    ][index]!,
-                    pinned: false,
-                    audio: [],
-                  })),
-                ],
-              });
-              router.dismissAll();
-              router.replace('/(tabs)/notes');
-            }}
-          />
-          <Button
-            label="Pending captures with playback"
-            onPress={() => {
-              dispatch({ type: 'reset', folders, notes: createSeedNotes() });
-              for (const id of ['First recording', 'Second recording']) {
-                dispatch({ type: 'audio', action: { type: 'start', id, title: id } });
+            <Button label="Reset rich demo" onPress={reset} />
+            <Button
+              label="Small libraries"
+              onPress={() => {
+                const now = new Date();
                 dispatch({
-                  type: 'audio',
-                  action: { type: 'tick', deltaMs: 18000, segments: transcript },
+                  type: 'reset',
+                  notes: createSeedNotes(now).filter((note) =>
+                    ['weekend', 'morning', 'studio'].includes(note.id),
+                  ),
+                  recordings: createSeedRecordings(now).filter(
+                    (recording) => recording.id === 'morning-audio',
+                  ),
+                  folders: folders.filter((folder) =>
+                    ['personal', 'work', 'ideas'].includes(folder.id),
+                  ),
                 });
-                dispatch({ type: 'audio', action: { type: 'finish' } });
-              }
-              dispatch({
-                type: 'audio',
-                action: { type: 'play', audioId: sample.id, durationMs: sample.durationMs },
-              });
-              router.dismissAll();
-              router.replace('/(tabs)/notes');
-            }}
-          />
-          <Button label="Empty library" onPress={() => reset(true)} />
-          <Button label="Recording" onPress={() => capture('recording')} />
-          <Button label="Paused recording" onPress={() => capture('paused')} />
-          <Button label="Interrupted recording" onPress={() => capture('interrupted')} />
-          <Button label="Destination save fails once" onPress={() => capture('finished')} />
-          <Button
-            label={failure ? 'Next save will fail' : 'Fail next destination save'}
-            onPress={() => dispatch({ type: 'failNextSave' })}
-          />
-        </Section>
-        <Section title="Audio attachment">
-          <AudioAttachment item={sample} />
-        </Section>
-        <Section title="Compact playback">
-          <CompactPlayback
-            {...playback}
-            onControls={() =>
-              router.push({ pathname: '/playback/[id]', params: { id: sample.id } })
-            }
-          />
-        </Section>
-        <Section title="Recording panel">
-          <RecordingPanel
-            capture={{
-              id: 'preview',
-              title: 'Preview',
-              status: 'paused',
-              elapsedMs: 32000,
-              segments: transcript,
-              moments: [],
-            }}
-            onMark={() => capture('paused')}
-            onToggle={() => capture('recording')}
-            onFinish={() => capture('finished')}
-            reduceMotion
-          />
-        </Section>
-        <Section title="Feedback">
-          <Feedback title="Moment added" />
-          <Feedback
-            title="Couldn’t save"
-            message="Your recording and destination are kept."
-            error
-          />
-        </Section>
-      </List>
-    </Host>
+                router.push('/(tabs)/notes');
+              }}
+            />
+            <Button
+              label="Empty libraries"
+              onPress={() => dispatch({ type: 'reset', notes: [], recordings: [], folders })}
+            />
+          </Section>
+          <Section title="Navigation review">
+            <Text>
+              Replace the session with realistic audio states, then scroll Notes to compare expanded
+              and docked accessories.
+            </Text>
+            {navigationPreviews.map((preview) => (
+              <Button
+                key={preview}
+                label={'Navigation · ' + preview}
+                onPress={() => {
+                  navigationPreviewActions(preview).forEach(dispatch);
+                  router.replace('/(tabs)/notes');
+                }}
+              />
+            ))}
+          </Section>
+          <Section title="Capture">
+            {(['recording', 'paused', 'interrupted', 'failed'] as const).map((status) => (
+              <Button key={status} label={'Capture · ' + status} onPress={() => seed(status)} />
+            ))}
+            {capture ? (
+              <>
+                <Button
+                  label="Fail this capture save"
+                  onPress={() =>
+                    dispatch({ type: 'setFailure', operationId: 'save:' + capture.id })
+                  }
+                />
+                <Button
+                  label="Fail this capture attachment"
+                  onPress={() =>
+                    dispatch({ type: 'setFailure', operationId: 'capture-link:' + capture.id })
+                  }
+                />
+              </>
+            ) : null}
+          </Section>
+          <Section title="Resource flows">
+            <Button label="Audio" onPress={() => router.push('/(tabs)/recordings')} />
+            <Button label="Demo import" onPress={() => router.push('/import-audio')} />
+            <Button
+              label="Shared audio"
+              onPress={() => {
+                reset();
+                dispatch({
+                  type: 'linkRecordings',
+                  operationId: createId(),
+                  recordingIds: ['morning-audio'],
+                  noteId: 'studio',
+                  now: new Date().toISOString(),
+                });
+                router.push('/(tabs)/recordings');
+              }}
+            />
+            <Button
+              label="Missing note"
+              onPress={() => router.push({ pathname: '/note/[id]', params: { id: 'missing' } })}
+            />
+            <Button
+              label="Missing audio"
+              onPress={() => audioNavigation.openRecording('missing')}
+            />
+          </Section>
+        </List>
+      </Host>
+    </>
   );
 }

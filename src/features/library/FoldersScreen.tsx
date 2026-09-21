@@ -1,4 +1,3 @@
-import { useUnsavedRecordingsAction } from '@/features/audio/toolbar';
 import {
   Button,
   ContextMenu,
@@ -33,18 +32,16 @@ export function FoldersScreen() {
   const { write } = useAudioActions();
   const { remove } = useFolderActions();
   const router = useRouter();
-  const unsavedAction = useUnsavedRecordingsAction();
   const rename = (folder: Folder) =>
     router.push({ pathname: '/folder-editor', params: { id: folder.id } });
   return (
     <>
       <Stack.Screen options={{ title: 'Folders', headerLargeTitleEnabled: true }} />
       <Stack.Toolbar placement="right">
-        {unsavedAction}
         <Stack.Toolbar.Button onPress={() => router.push('/select-folders')}>
           Select
         </Stack.Toolbar.Button>
-        {audio.capture || audio.pending.length || audio.playback.status !== 'idle' ? (
+        {audio.capture || audio.playback.status !== 'idle' ? (
           <Stack.Toolbar.Button icon="square.and.pencil" onPress={() => write()}>
             Write
           </Stack.Toolbar.Button>
